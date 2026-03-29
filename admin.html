@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GHOUL :: ROOT TERMINAL v2.0</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: radial-gradient(circle at center, #0c0c0c 0%, #000000 100%);
+            font-family: 'Share Tech Mono', 'Fira Code', monospace;
+            color: #cfcfcf;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Matrix Rain Effect */
+        .matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.08;
+        }
+
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        /* Scanlines */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.08) 0px,
+                rgba(0, 0, 0, 0.08) 2px,
+                transparent 2px,
+                transparent 4px
+            );
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        /* Glitch overlay */
+        .glitch-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            pointer-events: none;
+            z-index: 998;
+            animation: glitch-flicker 8s infinite;
+        }
+
+        @keyframes glitch-flicker {
+            0%, 100% { background: transparent; }
+            95% { background: rgba(255, 255, 255, 0.02); }
+            96% { background: rgba(0, 0, 0, 0.05); }
+            97% { background: rgba(255, 255, 255, 0.02); }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Terminal Window */
+        .terminal-window {
+            background: rgba(5, 5, 5, 0.92);
+            backdrop-filter: blur(2px);
+            border: 1px solid rgba(80, 80, 80, 0.6);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .terminal-window:hover {
+            border-color: rgba(180, 180, 180, 0.4);
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.05);
+        }
+
+        /* Terminal Header */
+        .term-header {
+            background: #080808;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #1e1e1e;
+        }
+
+        .term-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .ctrl {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #2a2a2a;
+            transition: all 0.2s;
+        }
+
+        .ctrl:hover {
+            background: #5a5a5a;
+        }
+
+        .term-title {
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            color: #6a6a6a;
+            text-transform: uppercase;
+        }
+
+        .term-status {
+            font-size: 10px;
+            color: #4a4a4a;
+        }
+
+        .term-status span {
+            color: #8a8a8a;
+        }
+
+        /* Terminal Body */
+        .term-body {
+            padding: 32px;
+        }
+
+        /* Prompt Line */
+        .prompt-line {
+            font-size: 13px;
+            color: #7a7a7a;
+            margin-bottom: 35px;
+            padding-bottom: 15px;
+            border-bottom: 1px dashed #1e1e1e;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .prompt-user {
+            color: #ffffff;
+        }
+
+        .prompt-at {
+            color: #5a5a5a;
+        }
+
+        .prompt-path {
+            color: #6a6a6a;
+        }
+
+        .prompt-sign {
+            color: #4a4a4a;
+        }
+
+        .cursor-blink {
+            display: inline-block;
+            width: 10px;
+            height: 14px;
+            background: #cfcfcf;
+            animation: blink 1s step-end infinite;
+            margin-left: 5px;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Profile Card - Neo Brilho */
+        .profile-neo {
+            display: flex;
+            gap: 35px;
+            margin-bottom: 45px;
+            padding: 28px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(100, 100, 100, 0.3);
+            border-radius: 16px;
+            transition: all 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .profile-neo::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.03), transparent);
+            transition: left 0.6s;
+        }
+
+        .profile-neo:hover::before {
+            left: 100%;
+        }
+
+        .profile-neo:hover {
+            border-color: rgba(180, 180, 180, 0.7);
+            transform: translateY(-3px);
+            box-shadow: 0 0 35px rgba(255, 255, 255, 0.08);
+        }
+
+        .avatar-container {
+            position: relative;
+        }
+
+        .avatar-frame {
+            width: 110px;
+            height: 110px;
+            border: 1px solid #3a3a3a;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .avatar-frame img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: grayscale(100%) contrast(1.2);
+        }
+
+        .avatar-overlay {
+            position: absolute;
+            bottom: -10px;
+            right: -10px;
+            background: #111;
+            border: 1px solid #3a3a3a;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            opacity: 0.7;
+        }
+
+        .avatar-overlay:hover {
+            opacity: 1;
+            border-color: #aaa;
+        }
+
+        .profile-info h2 {
+            font-size: 1.8rem;
+            font-weight: 400;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .profile-badge {
+            font-size: 0.7rem;
+            color: #8a8a8a;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+
+        .skill-bars {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .skill-item {
+            font-size: 0.7rem;
+            padding: 4px 12px;
+            background: rgba(20, 20, 20, 0.8);
+            border-left: 2px solid #6a6a6a;
+            transition: all 0.2s;
+        }
+
+        .skill-item:hover {
+            border-left-color: #fff;
+            background: #111;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 22px;
+            margin-bottom: 45px;
+        }
+
+        .stat-block {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #222;
+            padding: 28px 20px;
+            text-align: center;
+            position: relative;
+            transition: all 0.3s;
+            backdrop-filter: blur(4px);
+        }
+
+        .stat-block:hover {
+            border-color: #5a5a5a;
+            transform: translateY(-2px);
+        }
+
+        .stat-digit {
+            font-size: 2.5rem;
+            font-weight: 500;
+            font-family: monospace;
+            letter-spacing: 2px;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #6a6a6a;
+            margin-top: 10px;
+        }
+
+        .stat-icon {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.2rem;
+            opacity: 0.2;
+        }
+
+        /* Card Modular */
+        .module {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #222;
+            margin-bottom: 32px;
+            transition: all 0.3s;
+            backdrop-filter: blur(4px);
+        }
+
+        .module:hover {
+            border-color: #4a4a4a;
+        }
+
+        .module-header {
+            padding: 18px 25px;
+            border-bottom: 1px solid #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .module-title {
+            font-size: 0.8rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #aaa;
+        }
+
+        .module-title::before {
+            content: '>';
+            margin-right: 8px;
+            color: #fff;
+        }
+
+        .module-body {
+            padding: 25px;
+        }
+
+        /* Forms */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 22px;
+            margin-bottom: 28px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .field label {
+            font-size: 0.65rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #6a6a6a;
+        }
+
+        .field input, .field select {
+            background: #080808;
+            border: 1px solid #2a2a2a;
+            padding: 12px 14px;
+            color: #eee;
+            font-family: monospace;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .field input:focus, .field select:focus {
+            border-color: #7a7a7a;
+            outline: none;
+            background: #000;
+        }
+
+        /* Buttons */
+        .btn-term {
+            background: transparent;
+            border: 1px solid #3a3a3a;
+            padding: 12px 28px;
+            font-family: monospace;
+            font-size: 0.75rem;
+            letter-spacing: 1.5px;
+            color: #eee;
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+
+        .btn-term:hover {
+            border-color: #fff;
+            background: #111;
+            transform: scale(0.98);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid #2a2a2a;
+        }
+
+        /* Table */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+        }
+
+        .data-table th {
+            text-align: left;
+            padding: 12px 10px;
+            border-bottom: 1px solid #2a2a2a;
+            color: #8a8a8a;
+            font-weight: 400;
+            letter-spacing: 1px;
+        }
+
+        .data-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #1a1a1a;
+            font-family: monospace;
+        }
+
+        .data-table tr:hover td {
+            background: #0a0a0a;
+        }
+
+        .key-hash {
+            font-family: monospace;
+            font-size: 0.7rem;
+            color: #bbb;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border: 1px solid #3a3a3a;
+            font-size: 0.65rem;
+            letter-spacing: 1px;
+        }
+
+        /* Modal */
+        .modal-root {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.96);
+            backdrop-filter: blur(8px);
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal-card {
+            background: #050505;
+            border: 1px solid #3a3a3a;
+            padding: 40px;
+            max-width: 520px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+        }
+
+        .modal-card h3 {
+            font-weight: 400;
+            letter-spacing: 2px;
+            margin-bottom: 25px;
+        }
+
+        .license-display {
+            background: #000;
+            padding: 22px;
+            font-family: monospace;
+            font-size: 1rem;
+            margin: 25px 0;
+            border: 1px solid #2a2a2a;
+            word-break: break-all;
+        }
+
+        .loading-state {
+            text-align: center;
+            padding: 40px;
+            color: #6a6a6a;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #1a1a1a;
+            margin: 18px 0;
+        }
+
+        @media (max-width: 780px) {
+            .container { padding: 15px; }
+            .profile-neo { flex-direction: column; text-align: center; gap: 20px; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .term-body { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="matrixCanvas"></canvas>
+<div class="scanlines"></div>
+<div class="glitch-overlay"></div>
+
+<div class="container">
+    <div class="terminal-window">
+        <div class="term-header">
+            <div class="term-controls">
+                <div class="ctrl"></div>
+                <div class="ctrl"></div>
+                <div class="ctrl"></div>
+            </div>
+            <div class="term-title">GHOUL_TERMINAL :: LICENSE_MANAGER</div>
+            <div class="term-status"><span>●</span> ROOT</div>
+        </div>
+        <div class="term-body">
+            <div class="prompt-line">
+                <span class="prompt-user">ghoul</span><span class="prompt-at">@</span><span class="prompt-path">root</span><span class="prompt-sign">:~$</span> ./ghoul --auth-level=admin
+                <span class="cursor-blink"></span>
+            </div>
+
+            <!-- Profile Section -->
+            <div class="profile-neo">
+                <div class="avatar-container">
+                    <div class="avatar-frame">
+                        <img id="profileImage" src="https://ui-avatars.com/api/?background=000&color=fff&size=110&name=GHOUL&bold=true&rounded=false" alt="avatar">
+                    </div>
+                    <div class="avatar-overlay" onclick="triggerAvatarChange()">⛛</div>
+                </div>
+                <div class="profile-info">
+                    <h2>GHOUL :: root</h2>
+                    <div class="profile-badge">ACCESS LEVEL :: SUPERUSER</div>
+                    <div class="skill-bars">
+                        <div class="skill-item">#PYTHON</div>
+                        <div class="skill-item">#DISCORD_API</div>
+                        <div class="skill-item">#REVERSE_ENGINEERING</div>
+                        <div class="skill-item">#MALDEV</div>
+                        <div class="skill-item">#CRYPTO</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-block">
+                    <div class="stat-digit" id="statTotal">0</div>
+                    <div class="stat-label">TOTAL_LICENSES</div>
+                    <div class="stat-icon">#</div>
+                </div>
+                <div class="stat-block">
+                    <div class="stat-digit" id="statActive">0</div>
+                    <div class="stat-label">ACTIVE_LICENSES</div>
+                    <div class="stat-icon">#</div>
+                </div>
+                <div class="stat-block">
+                    <div class="stat-digit" id="statActivated">0</div>
+                    <div class="stat-label">ACTIVATED_KEYS</div>
+                    <div class="stat-icon">#</div>
+                </div>
+            </div>
+
+            <!-- Generate License Module -->
+            <div class="module">
+                <div class="module-header">
+                    <div class="module-title">LICENSE_GENERATOR</div>
+                    <div class="module-title">[ ENCRYPTED ]</div>
+                </div>
+                <div class="module-body">
+                    <div class="form-grid">
+                        <div class="field">
+                            <label>CLIENT_ID</label>
+                            <input type="text" id="clientName" placeholder=">_">
+                        </div>
+                        <div class="field">
+                            <label>VALIDITY_DAYS</label>
+                            <input type="number" id="days" value="30">
+                        </div>
+                        <div class="field">
+                            <label>MAX_SERVERS</label>
+                            <input type="number" id="maxServers" value="50">
+                        </div>
+                        <div class="field">
+                            <label>PERMISSION_LEVEL</label>
+                            <select id="permissions">
+                                <option value="all">ROOT_ACCESS</option>
+                                <option value="premium">PREMIUM</option>
+                                <option value="basic">BASIC</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn-term" onclick="generateLicense()">[ GENERATE ]</button>
+                </div>
+            </div>
+
+            <!-- License Database -->
+            <div class="module">
+                <div class="module-header">
+                    <div class="module-title">LICENSE_DATABASE</div>
+                    <button class="btn-term btn-outline" onclick="fetchLicenses()" style="padding: 6px 14px;">[ REFRESH ]</button>
+                </div>
+                <div class="module-body">
+                    <div id="licenseTableContainer" class="loading-state">>_ FETCHING_DATA...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="modalOverlay" class="modal-root">
+    <div class="modal-card">
+        <h3>[ LICENSE_GENERATED ]</h3>
+        <div class="license-display" id="generatedKeyText"></div>
+        <p>EXPIRES: <strong id="keyExpiresVal"></strong></p>
+        <p>CLIENT: <strong id="keyClientVal"></strong></p>
+        <div style="margin-top: 28px;">
+            <button class="btn-term" onclick="copyLicenseKey()">[ COPY ]</button>
+            <button class="btn-term btn-outline" onclick="closeModal()" style="margin-left: 12px;">[ CLOSE ]</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Matrix Rain Effect
+    const canvas = document.getElementById('matrixCanvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    let columns, drops;
+    let matrixChars = "01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let fontSize = 14;
+    
+    function resizeCanvas() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+        columns = Math.floor(width / fontSize);
+        drops = new Array(columns).fill(1);
+    }
+    
+    function drawMatrix() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = '#0a2a0a';
+        ctx.font = fontSize + 'px monospace';
+        for (let i = 0; i < drops.length; i++) {
+            let text = matrixChars[Math.floor(Math.random() * matrixChars.length)];
+            ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+            if (drops[i] * fontSize > height && Math.random() > 0.975) drops[i] = 0;
+            drops[i]++;
+        }
+    }
+    
+    window.addEventListener('resize', () => { resizeCanvas(); });
+    resizeCanvas();
+    setInterval(drawMatrix, 50);
+
+    // API Config
+    const API_BASE = '/api.php';
+    const ADMIN_TOKEN = 'SPAMRED2024';
+
+    async function apiRequest(action, bodyData = {}) {
+        const params = new URLSearchParams();
+        params.append('token', ADMIN_TOKEN);
+        for (let k in bodyData) params.append(k, bodyData[k]);
+        const resp = await fetch(`${API_BASE}?action=${action}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: params
+        });
+        return await resp.json();
+    }
+
+    async function fetchStats() {
+        try {
+            const stats = await apiRequest('stats');
+            document.getElementById('statTotal').innerText = stats.total || 0;
+            document.getElementById('statActive').innerText = stats.active || 0;
+            document.getElementById('statActivated').innerText = stats.activated || 0;
+        } catch(e) {}
+    }
+
+    async function fetchLicenses() {
+        const container = document.getElementById('licenseTableContainer');
+        try {
+            const licenses = await apiRequest('list');
+            if (!licenses || licenses.length === 0) {
+                container.innerHTML = '<div class="loading-state">>_ NO_LICENSES_FOUND</div>';
+                return;
+            }
+            let html = '<table class="data-table"><thead><tr><th>KEY_HASH</th><th>CLIENT</th><th>STATUS</th><th>EXPIRES</th><th>ACTIVATED</th></tr></thead><tbody>';
+            for (let l of licenses) {
+                html += `<tr>
+                    <td class="key-hash">${l.key}</td>
+                    <td>${l.client}</td>
+                    <td><span class="status-badge">${l.status.toUpperCase()}</span></td>
+                    <td>${l.expires}</td>
+                    <td>${l.activated_at ? 'YES' : 'NO'}</td>
+                </tr>`;
+            }
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        } catch(e) {
+            container.innerHTML = '<div class="loading-state">>_ ERROR_LOADING_DATA</div>';
+        }
+    }
+
+    async function generateLicense() {
+        const client = document.getElementById('clientName').value.trim();
+        const days = document.getElementById('days').value;
+        const maxServers = document.getElementById('maxServers').value;
+        const permissions = document.getElementById('permissions').value;
+
+        if (!client) {
+            alert('[!] CLIENT_ID_REQUIRED');
+            return;
+        }
+
+        try {
+            const res = await apiRequest('create', { client, days, max_servers: maxServers, permissions });
+            if (res.success) {
+                document.getElementById('generatedKeyText').innerText = res.key;
+                document.getElementById('keyExpiresVal').innerText = res.expires;
+                document.getElementById('keyClientVal').innerText = res.client;
+                document.getElementById('modalOverlay').style.display = 'flex';
+                document.getElementById('clientName').value = '';
+                fetchLicenses();
+                fetchStats();
+            } else {
+                alert('[!] ERROR: ' + (res.error || 'UNKNOWN'));
+            }
+        } catch(e) {
+            alert('[!] CONNECTION_ERROR');
+        }
+    }
+
+    function copyLicenseKey() {
+        const key = document.getElementById('generatedKeyText').innerText;
+        navigator.clipboard.writeText(key);
+        alert('[+] KEY_COPIED_TO_CLIPBOARD');
+    }
+
+    function closeModal() {
+        document.getElementById('modalOverlay').style.display = 'none';
+    }
+
+    function triggerAvatarChange() {
+        let url = prompt('>_ ENTER_IMAGE_URL (direct link):');
+        if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+            document.getElementById('profileImage').src = url;
+            localStorage.setItem('ghoul_avatar', url);
+        }
+    }
+
+    function loadAvatar() {
+        let saved = localStorage.getItem('ghoul_avatar');
+        if (saved) document.getElementById('profileImage').src = saved;
+    }
+
+    loadAvatar();
+    fetchStats();
+    fetchLicenses();
+    setInterval(() => {
+        fetchStats();
+        fetchLicenses();
+    }, 35000);
+</script>
+</body>
+</html>
